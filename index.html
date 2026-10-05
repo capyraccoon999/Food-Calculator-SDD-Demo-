@@ -85,6 +85,267 @@
       background: #111;
     }
 
+    button:disabled {
+      background: #999;
+      cursor: not-allowed;
+    }
+
+    .total {
+      margin-top: 25px;
+      padding-top: 20px;
+      border-top: 2px solid #333;
+      display: flex;
+      justify-content: space-between;
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    .status {
+      text-align: center;
+      color: #666;
+      padding: 15px 0;
+    }
+
+    .error {
+      color: #b00020;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="calculator">
+    <h1>Café Bill Calculator</h1>
+    <p class="subtitle">Select the quantity for each item.</p>
+
+    <div id="menu">
+      <p class="status">Loading menu...</p>
+    </div>
+
+    <button id="calculateButton" type="button" onclick="calculateBill()" disabled>
+      Calculate Bill
+    </button>
+
+    <div class="total">
+      <span>Total</span>
+      <span id="total">$0.00</span>
+    </div>
+  </div>
+
+  <script>
+    let menuItems = [];
+
+    async function loadMenu() {
+      const menuContainer = document.getElementById("menu");
+      const calculateButton = document.getElementById("calculateButton");
+
+      try {
+        const response = await fetch("menu.csv");
+
+        if (!response.ok) {
+          throw new Error("Could not load menu.csv");
+        }
+
+        const csvText = await response.text();
+        menuItems = parseCSV(csvText);
+
+        if (menuItems.length === 0) {
+          throw new Error("No valid menu items were found.");
+        }
+
+        renderMenu();
+        calculateButton.disabled = false;
+
+      } catch (error) {
+        console.error(error);
+
+        menuContainer.innerHTML = `
+          <p class="status error">
+            Unable to load the menu.
+          </p>
+        `;
+      }
+    }
+
+    function parseCSV(csvText) {
+      const lines = csvText
+        .trim()
+        .split(/\r?\n/)
+        .filter(line => line.trim() !== "");
+
+      if (lines.length < 2) {
+        return [];
+      }
+
+      const items = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const columns = lines[i].split(",");
+
+        if (columns.length < 2) {
+          continue;
+        }
+
+        const name = columns[0].trim();
+        const price = parseFloat(columns[1].trim());
+
+        if (name && Number.isFinite(price)) {
+          items.push({
+            name: name,
+            price: price
+          });
+        }
+      }
+
+      return items;
+    }
+
+    function renderMenu() {
+      const menuContainer = document.getElementById("menu");
+      menuContainer.innerHTML = "";
+
+      menuItems.forEach((item, index) => {
+        const itemElement = document.createElement("div");
+        itemElement.className = "item";
+
+        const details = document.createElement("div");
+
+        const nameElement = document.createElement("span");
+        nameElement.className = "item-name";
+        nameElement.textContent = item.name;
+
+        const priceElement = document.createElement("span");
+        priceElement.className = "price";
+        priceElement.textContent = "$" + item.price.toFixed(2);
+
+        details.appendChild(nameElement);
+        details.appendChild(priceElement);
+
+        const quantityInput = document.createElement("input");
+        quantityInput.type = "number";
+        quantityInput.id = "quantity-" + index;
+        quantityInput.min = "0";
+        quantityInput.step = "1";
+        quantityInput.value = "0";
+        quantityInput.setAttribute(
+          "aria-label",
+          "Quantity for " + item.name
+        );
+
+        itemElement.appendChild(details);
+        itemElement.appendChild(quantityInput);
+
+        menuContainer.appendChild(itemElement);
+      });
+    }
+
+    function calculateBill() {
+      let total = 0;
+
+      menuItems.forEach((item, index) => {
+        const input = document.getElementById("quantity-" + index);
+        const quantity = parseInt(input.value, 10);
+
+        if (Number.isFinite(quantity) && quantity > 0) {
+          total += quantity * item.price;
+        }
+      });
+
+      document.getElementById("total").textContent =
+        "$" + total.toFixed(2);
+    }
+
+    loadMenu();
+  </script>
+
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Café Bill Calculator</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 40px 20px;
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      color: #222;
+    }
+
+    .calculator {
+      max-width: 520px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 {
+      margin-top: 0;
+      text-align: center;
+      font-size: 26px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 25px;
+    }
+
+    .item {
+      display: grid;
+      grid-template-columns: 1fr 80px;
+      gap: 15px;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .item-name {
+      font-weight: bold;
+    }
+
+    .price {
+      display: block;
+      margin-top: 3px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 16px;
+      text-align: center;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 24px;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      background: #333;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #111;
+    }
+
     .total {
       margin-top: 25px;
       padding-top: 20px;
